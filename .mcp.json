@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "thrifle": {
+      "type": "http",
+      "url": "https://api.thrifle.com/api/mcp"
+    }
+  }
+}

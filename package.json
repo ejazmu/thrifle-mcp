@@ -1,0 +1,23 @@
+{
+  "name": "thrifle-mcp",
+  "version": "1.0.0",
+  "description": "Thrifle's Model Context Protocol server: US return policies, price-match rules, military & student discounts, deals, credit-card terms and Amazon buy-or-wait verdicts as read-only tools for AI assistants.",
+  "license": "MIT",
+  "private": false,
+  "main": "src/router.js",
+  "bin": { "thrifle-mcp": "server.js" },
+  "scripts": {
+    "start": "node server.js",
+    "test": "node scripts/test-mcp-server.js"
+  },
+  "engines": { "node": ">=18" },
+  "repository": { "type": "git", "url": "https://github.com/ejazmu/thrifle-mcp.git" },
+  "homepage": "https://thrifle.com/mcp",
+  "bugs": { "url": "https://github.com/ejazmu/thrifle-mcp/issues", "email": "hello@thrifle.com" },
+  "keywords": ["mcp", "model-context-protocol", "mcp-server", "return-policy", "price-match", "deals", "shopping", "claude", "chatgpt", "retail"],
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "express": "^4.22.2",
+    "zod": "^3.25.0"
+  }
+}

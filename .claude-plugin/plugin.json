@@ -1,0 +1,11 @@
+{
+  "name": "thrifle",
+  "displayName": "Thrifle — return policies, deals & price intelligence",
+  "version": "1.0.0",
+  "description": "Ask about any US retailer's return policy (graded A+ to D−), price-match rules, military and student discounts, birthday freebies, how to cancel a subscription, live deals, store credit cards, and whether an Amazon price is worth buying now. Read-only tools over Thrifle's verified databases; every answer links to its source page.",
+  "author": { "name": "Thrifle", "email": "hello@thrifle.com", "url": "https://thrifle.com" },
+  "homepage": "https://thrifle.com/mcp",
+  "repository": "https://github.com/ejazmu/thrifle-mcp",
+  "license": "MIT",
+  "keywords": ["shopping", "return-policy", "price-match", "deals", "discounts", "credit-cards", "amazon", "retail", "consumer"]
+}
