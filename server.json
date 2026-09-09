@@ -2,7 +2,7 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "com.thrifle/mcp",
   "title": "Thrifle",
-  "description": "US return policies with grades for 2,250 retailers, price-match rules, military and student discounts, birthday freebies, cancellation guides, live deals, credit-card terms and Amazon buy-or-wait verdicts. Read-only, no auth.",
+  "description": "US return policies, price-match rules, discounts, deals and Amazon price verdicts. Read-only.",
   "version": "1.0.0",
   "websiteUrl": "https://thrifle.com/mcp",
   "repository": {
