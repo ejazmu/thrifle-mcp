@@ -58,6 +58,23 @@ const url = {
   deferredInterestCalc: () => `${SITE}/money/calculators/deferred-interest`,
 };
 
+// Every thrifle.com URL a tool hands back is tagged so assistant-driven clicks
+// show up in GA4 as their own segment (utm_source=thrifle_mcp). Tool results are
+// private to the chat, so this tag is the ONLY way a click from Claude/ChatGPT
+// ever becomes visible to us. The canonical tag on every page keeps SEO clean.
+// MCP_UTM=off disables it (fixtures and the standalone repo run with it on).
+const UTM = "utm_source=thrifle_mcp&utm_medium=mcp";
+function withUtm(u) {
+  if (!u || typeof u !== "string" || process.env.MCP_UTM === "off") return u;
+  if (!u.startsWith(SITE)) return u;
+  return u + (u.includes("?") ? "&" : "?") + UTM;
+}
+for (const k of Object.keys(url)) {
+  if (k === "site" || typeof url[k] !== "function") continue;
+  const build = url[k];
+  url[k] = (...args) => withUtm(build(...args));
+}
+
 // ── helpers ─────────────────────────────────────────────────────────────────
 const ENTITIES = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " ", "#39": "'", "#x27": "'", rsquo: "’", lsquo: "‘", rdquo: "”", ldquo: "“", mdash: "—", ndash: "–", hellip: "…" };
 
@@ -506,6 +523,7 @@ function shapePricePulse(cpi, gas) {
 
 module.exports = {
   url,
+  withUtm,
   htmlToText,
   num,
   pct,

@@ -241,7 +241,7 @@ const TOOLS = [
         filters: { type: type || null, category: category || null, query: query || null },
         total_matches: r.body.count || 0,
         results: (r.body.merchants || []).map(S.shapeDiscountRow),
-        url: type === "military" ? `${S.url.site}/military-discounts` : type === "student" ? `${S.url.site}/student-discounts` : S.url.discountsHub(),
+        url: type === "military" ? S.withUtm(`${S.url.site}/military-discounts`) : type === "student" ? S.withUtm(`${S.url.site}/student-discounts`) : S.url.discountsHub(),
       };
     },
   },
@@ -325,7 +325,7 @@ const TOOLS = [
       if (!r.ok || !r.body) return fail(`Deal search failed (${r.status || "timeout"})`);
       const all = Array.isArray(r.body.deals) ? r.body.deals : Array.isArray(r.body) ? r.body : [];
       const rows = all.map(S.shapeDealRow).filter((d) => include_expired || !d.expired).slice(0, n);
-      return { query, count: rows.length, results: rows, url: `${S.url.site}/search/${encodeURIComponent(query.trim())}`, cite: { source: "Thrifle Deals", url: S.url.dealsHub() } };
+      return { query, count: rows.length, results: rows, url: S.withUtm(`${S.url.site}/search/${encodeURIComponent(query.trim())}`), cite: { source: "Thrifle Deals", url: S.url.dealsHub() } };
     },
   },
   {
@@ -583,7 +583,7 @@ const TOOLS = [
         tools: TOOLS.map((t) => ({ name: t.name, use_for: t.title })),
         citation: "Link to the `url` returned with each result. Data is verified by Thrifle's editors and refreshed on a schedule; each record carries its own last_verified date.",
         contact: about.contact || "hello@thrifle.com",
-        licensing: `${S.url.site}/data-licensing`,
+        licensing: S.withUtm(`${S.url.site}/data-licensing`),
       };
     },
   },

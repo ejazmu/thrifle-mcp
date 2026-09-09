@@ -25,6 +25,7 @@ const assert = require("assert");
 const express = require("express");
 
 process.env.SITE_URL = "https://thrifle.com";
+const T = "?utm_source=thrifle_mcp&utm_medium=mcp"; // every returned thrifle.com URL carries the MCP click tag
 process.env.MCP_RATE_PER_MIN = "1000";
 process.env.MCP_RATE_PER_DAY = "100000";
 delete process.env.MCP_API_KEYS;
@@ -166,12 +167,12 @@ function parse(result) {
     const out = await call("get_return_policy", { merchant: "costco" });
     assert.strictEqual(out.found, true);
     assert.strictEqual(out.grade.letter, "A");
-    assert.strictEqual(out.url, "https://thrifle.com/return-policy/costco");
+    assert.strictEqual(out.url, "https://thrifle.com/return-policy/costco" + T);
     assert.strictEqual(out.cite.url, out.url);
     assert.strictEqual(out.return_window_days, "no deadline");
     assert.strictEqual(out.electronics_exception.days, 90);
     assert.strictEqual(out.vs_category.longer_than_pct_of_peers, 91);
-    assert.strictEqual(out.top_rated_alternatives[0].url, "https://thrifle.com/return-policy/sams-club");
+    assert.strictEqual(out.top_rated_alternatives[0].url, "https://thrifle.com/return-policy/sams-club" + T);
     assert.ok(out.policy_url_note, "affiliate hop must be labelled");
     assert.strictEqual(out.today.verdict, "lifetime");
     for (const k of ["_id", "__v", "seo_demand", "pinterest_pin_url", "aliases", "about", "our_take"]) assert.ok(!(k in out), k + " leaked");
@@ -189,7 +190,7 @@ function parse(result) {
     const out = await call("compare_return_policies", { merchant_a: "costco", merchant_b: "target" });
     assert.strictEqual(out.overall_winner, "Costco");
     assert.strictEqual(out.axis_winners.restocking, "tie");
-    assert.strictEqual(out.url, "https://thrifle.com/return-policy/compare/costco-vs-target");
+    assert.strictEqual(out.url, "https://thrifle.com/return-policy/compare/costco-vs-target" + T);
   });
 
   await t("search_return_policies: no args → categories; query → ranked rows; & slug rule honoured", async () => {
@@ -198,15 +199,15 @@ function parse(result) {
     assert.ok(cats.categories.some((c) => c.name === "Electronics"));
     const hit = await call("search_return_policies", { query: "best" });
     assert.strictEqual(hit.results[0].merchant, "Best Buy");
-    assert.strictEqual(hit.results[0].url, "https://thrifle.com/return-policy/best-buy");
+    assert.strictEqual(hit.results[0].url, "https://thrifle.com/return-policy/best-buy" + T);
     const att = await call("search_return_policies", { query: "at&t" });
-    assert.strictEqual(att.results[0].url, "https://thrifle.com/return-policy/at-and-t");
+    assert.strictEqual(att.results[0].url, "https://thrifle.com/return-policy/at-and-t" + T);
   });
 
   await t("search_deals: dead deals dropped, buy link is the cloaked hop, page URL from category", async () => {
     const out = await call("search_deals", { query: "airpods (pro)" });
     assert.strictEqual(out.count, 1);
-    assert.strictEqual(out.results[0].url, "https://thrifle.com/deals/tech-and-electronics/apple-airpods-pro-3-open-box-deal");
+    assert.strictEqual(out.results[0].url, "https://thrifle.com/deals/tech-and-electronics/apple-airpods-pro-3-open-box-deal" + T);
     assert.strictEqual(out.results[0].buy_url, FIX.liveDeal.link);
     assert.strictEqual(out.results[0].discount_pct, 42);
     assert.strictEqual(out.results[0].expired, false);
@@ -229,11 +230,11 @@ function parse(result) {
     assert.strictEqual(ppSeen.dbOnly, "1", "must never leave the dbOnly path");
     assert.strictEqual(out.verdict.call, "HOLD");
     assert.strictEqual(out.price.all_time_low, 2.64);
-    assert.strictEqual(out.url, "https://thrifle.com/price-predict?asin=0783225784");
+    assert.strictEqual(out.url, "https://thrifle.com/price-predict?asin=0783225784&utm_source=thrifle_mcp&utm_medium=mcp");
     assert.ok(out.caveat);
     const un = await call("predict_amazon_price", { asin_or_url: "B000000000" });
     assert.strictEqual(un.found, false);
-    assert.strictEqual(un.url, "https://thrifle.com/price-predict?asin=B000000000");
+    assert.strictEqual(un.url, "https://thrifle.com/price-predict?asin=B000000000&utm_source=thrifle_mcp&utm_medium=mcp");
   });
 
   await t("get_credit_card: internals stripped, low-confidence warning, cross-links", async () => {
@@ -242,14 +243,14 @@ function parse(result) {
     for (const k of ["_id", "__v", "collection_notes", "batch", "schema_version"]) assert.ok(!(k in out), k + " leaked");
     assert.ok(!("collected_by" in out.provenance));
     assert.ok(/Low-confidence/.test(out.warning));
-    assert.strictEqual(out.url, "https://thrifle.com/money/cards/citi-bloomingdales-amex-card");
-    assert.strictEqual(out.merchant_return_policy, "https://thrifle.com/return-policy/bloomingdales");
+    assert.strictEqual(out.url, "https://thrifle.com/money/cards/citi-bloomingdales-amex-card" + T);
+    assert.strictEqual(out.merchant_return_policy, "https://thrifle.com/return-policy/bloomingdales" + T);
     assert.ok(out.deferred_interest_calculator);
   });
 
   await t("get_store_credit_cards + search_credit_cards: slug join and filters", async () => {
     const store = await call("get_store_credit_cards", { merchant: "Bloomingdale's" });
-    assert.strictEqual(store.url, "https://thrifle.com/money/store-cards/bloomingdales");
+    assert.strictEqual(store.url, "https://thrifle.com/money/store-cards/bloomingdales" + T);
     assert.strictEqual(store.cards[0].deferred_interest, true);
     const s = await call("search_credit_cards", { query: "nothing-matches" });
     assert.strictEqual(s.total_matches, 0);
@@ -261,17 +262,17 @@ function parse(result) {
     assert.ok(/Method & results/.test(out.text));
     assert.ok(/• 42% real/.test(out.text));
     assert.strictEqual(out.faq.length, 1);
-    assert.strictEqual(out.url, "https://thrifle.com/blog/black-friday-2025-amazon-what-actually-dropped");
+    assert.strictEqual(out.url, "https://thrifle.com/blog/black-friday-2025-amazon-what-actually-dropped" + T);
     assert.strictEqual(out.author, "Haider Ejaz");
   });
 
   await t("get_merchant_discounts / get_cancellation_guide: key normalisation and helpful not-found", async () => {
     const d = await call("get_merchant_discounts", { merchant: "Home Depot" });
-    assert.strictEqual(d.url, "https://thrifle.com/discounts/home-depot");
+    assert.strictEqual(d.url, "https://thrifle.com/discounts/home-depot" + T);
     assert.strictEqual(d.military.discount_value, "10%");
     const c = await call("get_cancellation_guide", { merchant: "Netflix" });
     assert.strictEqual(c.found, false);
-    assert.strictEqual(c.available[0].url, "https://thrifle.com/how-to-cancel/planet-fitness");
+    assert.strictEqual(c.available[0].url, "https://thrifle.com/how-to-cancel/planet-fitness" + T);
   });
 
   await t("about_thrifle lists the catalogue", async () => {
@@ -315,10 +316,12 @@ function parse(result) {
   });
 
   await t("shape helpers: URL rules and text cleanup", async () => {
-    assert.strictEqual(S.url.discount("home_depot"), "https://thrifle.com/discounts/home-depot");
-    assert.strictEqual(S.url.returnPolicy("academy sports + outdoors"), "https://thrifle.com/return-policy/academy-sports-plus-outdoors");
-    assert.strictEqual(S.url.deal({ category_name: "Tools & Home Improvement", slug: "x" }), "https://thrifle.com/deals/tools-and-home-improvement/x");
-    assert.strictEqual(S.url.blog({ vertical: "finance", slug: "k" }), "https://thrifle.com/money/blog/k");
+    assert.strictEqual(S.url.discount("home_depot"), "https://thrifle.com/discounts/home-depot" + T);
+    assert.strictEqual(S.url.returnPolicy("academy sports + outdoors"), "https://thrifle.com/return-policy/academy-sports-plus-outdoors" + T);
+    assert.strictEqual(S.url.deal({ category_name: "Tools & Home Improvement", slug: "x" }), "https://thrifle.com/deals/tools-and-home-improvement/x" + T);
+    assert.strictEqual(S.url.blog({ vertical: "finance", slug: "k" }), "https://thrifle.com/money/blog/k" + T);
+    assert.strictEqual(S.withUtm("https://example.com/x"), "https://example.com/x", "only thrifle.com URLs are tagged");
+    assert.strictEqual(S.withUtm("https://thrifle.com/a?b=1"), "https://thrifle.com/a?b=1&utm_source=thrifle_mcp&utm_medium=mcp");
     assert.strictEqual(S.htmlToText("<p>a&amp;b</p><p>c</p>"), "a&b\nc");
     assert.ok(S.htmlToText("x".repeat(50), 10).endsWith("[truncated]"));
     assert.strictEqual(S.pct("144", 249), 42);
