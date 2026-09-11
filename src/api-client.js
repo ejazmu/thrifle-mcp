@@ -13,10 +13,15 @@
  * answer is, by construction, the same answer thrifle.com gives.
  *
  * The hop never carries `X-Thrifle-SSR`, so utils/internal-request.js treats
- * it as public traffic — which it is. No canary marker, no forwarded identity.
+ * it as public traffic — which it is. No canary marker, no SSR identity. It does
+ * carry the MCP client's address in X-Thrifle-MCP-Client: every MCP user reaches
+ * the API from 127.0.0.1, and per-IP rules behind this hop (/api/price-predict's
+ * burst limit and datacenter gate) need to tell them apart. The API believes
+ * that header only on a loopback hop with this UA (isInternalMcpRequest).
  */
 
 const UA = "Thrifle-MCP/1.0 (+https://thrifle.com/mcp)";
+const CLIENT_HEADER = "x-thrifle-mcp-client";
 const TIMEOUT_MS = 12000;
 const CACHE_MAX = 200;
 
@@ -24,7 +29,7 @@ const CACHE_MAX = 200;
 // (the return-policy list is ~2,250 rows) and change rarely.
 const cache = new Map(); // url -> { at, value }
 
-function makeApiClient({ port, host } = {}) {
+function makeApiClient({ port, host, clientIp } = {}) {
   // Standalone runs (this repo's server.js) point at the public API; inside the
   // Thrifle backend the router passes the port it is listening on and the hop
   // stays on loopback. THRIFLE_API_BASE always wins when set.
@@ -32,6 +37,9 @@ function makeApiClient({ port, host } = {}) {
   const base = process.env.THRIFLE_API_BASE
     ? String(process.env.THRIFLE_API_BASE).replace(/\/+$/, "")
     : `http://${host || "127.0.0.1"}:${p}/api`;
+  const headers = { "user-agent": UA, accept: "application/json" };
+  // Loopback hop only: a standalone run never sends its users' addresses to the API.
+  if (clientIp && !process.env.THRIFLE_API_BASE) headers[CLIENT_HEADER] = String(clientIp).slice(0, 100);
 
   /**
    * GET <base><path>?<params>. Never throws on an HTTP error — returns
@@ -52,10 +60,7 @@ function makeApiClient({ port, host } = {}) {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
     try {
-      const r = await fetch(key, {
-        headers: { "user-agent": UA, accept: "application/json" },
-        signal: ctrl.signal,
-      });
+      const r = await fetch(key, { headers, signal: ctrl.signal });
       const text = await r.text();
       let body = null;
       try {
@@ -79,4 +84,4 @@ function makeApiClient({ port, host } = {}) {
   return { get, base };
 }
 
-module.exports = { makeApiClient, UA, _cache: cache };
+module.exports = { makeApiClient, UA, CLIENT_HEADER, _cache: cache };
