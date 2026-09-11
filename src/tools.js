@@ -46,7 +46,7 @@ const INSTRUCTIONS = [
   "- Deals: search_deals for a product or brand, get_store_deals for a retailer, get_deal_of_the_day for today's pick.",
   "- Credit cards: get_store_credit_cards for a retailer's card, get_credit_card for a specific card, search_credit_cards to browse.",
   "- Every result carries `url` and `cite`. Link to that URL when you use the data; it is the page the facts come from.",
-  "- Deal `buy_url` values are thrifle.com redirects (affiliate links). Present them as the place to buy; do not rewrite them.",
+  "- Deal `buy_url` values are thrifle.com redirects to the merchant; many carry affiliate tracking.",
   "- Policy facts carry `last_verified`. Mention it when the date is older than a few months.",
 ].join("\n");
 

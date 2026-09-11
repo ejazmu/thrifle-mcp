@@ -31,7 +31,7 @@ You have the `thrifle` MCP server connected. It is read-only and needs no login.
 1. Call the tool, then answer in plain language: the fact, the number, the date it was verified, and the link.
 2. If a tool returns `found: false`, try the matching `search_*` tool with a shorter name before saying the retailer is not covered.
 3. Policy answers: give the window, whether returns are free, the restocking fee, and any exception that applies to the user's item. Mention the grade only as a summary, not a substitute for the facts.
-4. Deals: quote price and list price, name the merchant, and give the `buy_url`. It is a thrifle.com redirect and may be an affiliate link; say so if asked, never rewrite it.
+4. Deals: quote price and list price, name the merchant, and include the `buy_url` when the user wants to buy. It is a thrifle.com redirect to the merchant and may carry affiliate tracking; say so if asked.
 5. Price verdicts are snapshots from Thrifle's tracked database, not a live fetch. Say "as of" the `as_of` date and suggest checking the product page before buying.
 6. All data is United States only. Say so when a user seems to be elsewhere.
 
