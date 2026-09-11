@@ -1,0 +1,574 @@
+{
+  "identifier": "thrifle",
+  "name": "Thrifle",
+  "version": "1.0.0",
+  "description": "Thrifle's US shopping data as read-only tools: return policies for about 2,250 US retailers (graded A+ to D-, with product exceptions and holiday deadlines), price-match rules and which stores match a competitor, military and student discounts, birthday freebies, subscription cancellation guides, store credit cards (APR, deferred interest), deals, and a buy-now-or-wait verdict for Amazon products. No account or API key; every answer links to its Thrifle source page.",
+  "author": "Thrifle",
+  "authorUrl": "https://thrifle.com",
+  "homepage": "https://thrifle.com/mcp",
+  "cloudEndpoint": "https://api.thrifle.com/api/mcp",
+  "icon": "https://raw.githubusercontent.com/ejazmu/thrifle-mcp/main/assets/icon-512.png",
+  "tags": [
+    "shopping",
+    "return-policy",
+    "price-match",
+    "deals",
+    "discounts",
+    "credit-cards",
+    "amazon",
+    "retail"
+  ],
+  "tools": [
+    {
+      "name": "get_return_policy",
+      "description": "Verified return policy for a US retailer: return window, free returns, restocking fee, holiday extension, non-returnable items, an A+–D− grade, how it compares with its category, and the retailer's own policy URL. Optionally pass what the shopper bought to surface a product-specific exception (e.g. electronics at Costco). Call this for any 'what is X's return policy' question.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "merchant": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80,
+            "description": "Retailer name or thrifle.com slug, e.g. \"Costco\", \"best-buy\", \"Nordstrom\""
+          },
+          "product": {
+            "type": "string",
+            "maxLength": 200,
+            "description": "Optional: the product being returned, e.g. 'MacBook Air' or 'gift card', to check for a category exception"
+          }
+        },
+        "required": [
+          "merchant"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      }
+    },
+    {
+      "name": "compare_return_policies",
+      "description": "Side-by-side comparison of two US retailers' return policies with grades, per-axis winners (window, free returns, restocking fee, holiday extension) and an overall winner. Use for 'is it easier to return to X or Y' questions.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "merchant_a": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80,
+            "description": "Retailer name or thrifle.com slug — first retailer, e.g. \"Costco\", \"best-buy\", \"Nordstrom\""
+          },
+          "merchant_b": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80,
+            "description": "Retailer name or thrifle.com slug — second retailer, e.g. \"Costco\", \"best-buy\", \"Nordstrom\""
+          }
+        },
+        "required": [
+          "merchant_a",
+          "merchant_b"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      }
+    },
+    {
+      "name": "search_return_policies",
+      "description": "Find retailers in Thrifle's return-policy database by name fragment and/or category (e.g. 'Fashion', 'Electronics', 'Home'). Returns slim rows with the return window and a link. With no arguments it returns the category list and total count. Use it when get_return_policy says a retailer was not found, or to list retailers in a category.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "maxLength": 80,
+            "description": "Name fragment, e.g. 'best' matches Best Buy"
+          },
+          "category": {
+            "type": "string",
+            "maxLength": 60,
+            "description": "Category name as shown on thrifle.com/return-policy"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 25,
+            "description": "Max results (default 10, max 25)"
+          }
+        },
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      }
+    },
+    {
+      "name": "get_price_match_policy",
+      "description": "Whether a US retailer matches competitors' prices (which competitors, proof required, exclusions, how to claim) and whether it offers a post-purchase price adjustment (window in days). Call for 'does X price match' or 'will X refund the difference if the price drops' questions.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "merchant": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80,
+            "description": "Retailer name or thrifle.com slug, e.g. \"Costco\", \"best-buy\", \"Nordstrom\""
+          }
+        },
+        "required": [
+          "merchant"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      }
+    },
+    {
+      "name": "who_will_price_match",
+      "description": "Reverse lookup: the US retailers whose price-match policy explicitly names the given store as an accepted competitor. Optionally filter by the product category being bought so only stores that plausibly stock it are listed. Use for 'who will match Amazon's price on this' questions.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "merchant": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80,
+            "description": "Retailer name or thrifle.com slug — the store whose price you found, e.g. \"Costco\", \"best-buy\", \"Nordstrom\""
+          },
+          "category": {
+            "type": "string",
+            "maxLength": 60,
+            "description": "Optional deal category, e.g. 'Tech & Electronics', 'Home & Furniture', 'Toys & Hobbies'"
+          }
+        },
+        "required": [
+          "merchant"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      }
+    },
+    {
+      "name": "get_merchant_discounts",
+      "description": "Verified military (active duty, veterans, reserve) and student discount programmes for a US retailer: value, eligibility, verification method (e.g. ID.me, SheerID), online vs in-store, stackability, exclusions, whether it is running right now, and the source URL. Call for 'does X have a military/student discount' questions.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "merchant": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80,
+            "description": "Retailer name or thrifle.com slug, e.g. \"Costco\", \"best-buy\", \"Nordstrom\""
+          }
+        },
+        "required": [
+          "merchant"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      }
+    },
+    {
+      "name": "search_discounts",
+      "description": "Browse Thrifle's discount database: filter by programme type (military, student, or both), retail category, and/or a name fragment. Returns slim rows with the discount value and a link per retailer.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "military",
+              "student",
+              "both"
+            ],
+            "description": "Only retailers with this programme"
+          },
+          "category": {
+            "type": "string",
+            "maxLength": 60,
+            "description": "Retail category, e.g. 'Apparel', 'Electronics'"
+          },
+          "query": {
+            "type": "string",
+            "maxLength": 80,
+            "description": "Name fragment, e.g. 'nike'"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50,
+            "description": "Max results (default 15, max 50)"
+          }
+        },
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      }
+    },
+    {
+      "name": "get_cancellation_guide",
+      "description": "Step-by-step guide to cancelling a US subscription or membership: available channels (online, app, phone, in person), notice period, fees, refund after cancelling, retention tactics to expect, and an ease-of-cancellation grade. Coverage is still small; the response lists what is available when the merchant is not found.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "merchant": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80,
+            "description": "Retailer name or thrifle.com slug — the service, e.g. 'Planet Fitness', e.g. \"Costco\", \"best-buy\", \"Nordstrom\""
+          }
+        },
+        "required": [
+          "merchant"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      }
+    },
+    {
+      "name": "get_birthday_freebie",
+      "description": "What a US restaurant or retailer gives away for your birthday, whether it is actually free or needs a purchase or prior spend, how to sign up and how far ahead, the validity window, ID requirements, and known gotchas. Call for 'what does X give you on your birthday' questions.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "merchant": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80,
+            "description": "Retailer name or thrifle.com slug — brand, e.g. 'Starbucks', 'Sephora', e.g. \"Costco\", \"best-buy\", \"Nordstrom\""
+          }
+        },
+        "required": [
+          "merchant"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      }
+    },
+    {
+      "name": "search_birthday_freebies",
+      "description": "Browse verified birthday offers from US brands. Filters: actually_free (no purchase and no prior spend required), kids (child-eligible), no_signup, category (e.g. 'Restaurant', 'Beauty'), name fragment. Returns slim rows; use get_birthday_freebie for the full terms of one brand.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "category": {
+            "type": "string",
+            "maxLength": 60
+          },
+          "actually_free": {
+            "type": "boolean",
+            "description": "Only offers with no purchase or prior-spend requirement"
+          },
+          "kids": {
+            "type": "boolean"
+          },
+          "no_signup": {
+            "type": "boolean"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50,
+            "description": "Max results (default 15, max 50)"
+          }
+        },
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      }
+    },
+    {
+      "name": "search_deals",
+      "description": "Search Thrifle's curated US deals by product, brand or keyword. Returns live deals with price, list price, discount %, merchant, coupon code when there is one, the thrifle.com deal page, and a buy link. Expired deals are excluded unless include_expired is set. Use for 'is there a deal on X' or 'best price on X right now' questions.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 120,
+            "description": "Product, brand or keyword, e.g. 'AirPods Pro', 'Dyson', 'robot vacuum'"
+          },
+          "sort": {
+            "type": "string",
+            "enum": [
+              "newest",
+              "popular"
+            ],
+            "description": "Default newest"
+          },
+          "include_expired": {
+            "type": "boolean"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 20,
+            "description": "Max results (default 8, max 20)"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      }
+    },
+    {
+      "name": "get_deal",
+      "description": "Everything Thrifle knows about one deal, by its thrifle.com URL or slug: price and list price, merchant, coupon, why it's great, the editorial verdict, the price-history verdict for Amazon items, FAQ, and the buy link. Use after search_deals when the shopper wants detail on one item.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "deal": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 300,
+            "description": "thrifle.com deal URL or the slug at the end of it"
+          }
+        },
+        "required": [
+          "deal"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      }
+    },
+    {
+      "name": "get_deal_of_the_day",
+      "description": "Thrifle's editor-picked deal of the day with price, merchant and buy link. Cheap to call; returns found:false when none is set.",
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "get_store_deals",
+      "description": "A retailer's store page on Thrifle: how many live deals it has, the most recent ones with prices and buy links, and its military/student discount summary when known. Use for 'what deals does Costco have right now' questions.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "merchant": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80,
+            "description": "Retailer name or thrifle.com slug, e.g. \"Costco\", \"best-buy\", \"Nordstrom\""
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 8,
+            "description": "Max results (default 8, max 8)"
+          }
+        },
+        "required": [
+          "merchant"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      }
+    },
+    {
+      "name": "predict_amazon_price",
+      "description": "Thrifle's Price Predict verdict for an Amazon product (ASIN or amazon.com URL): BUY / HOLD / WAIT with a buy score, current vs typical price, all-time low, 30/90/365-day averages, probability of a drop in the next 30/60 days, the expected low and timing basis. Reads Thrifle's tracked-price database (US and major international Amazon stores); untracked products return found:false with a link to run a live check on the site.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "asin_or_url": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 500,
+            "description": "10-character ASIN (e.g. B0CHX3QBCH) or any Amazon product URL"
+          }
+        },
+        "required": [
+          "asin_or_url"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      }
+    },
+    {
+      "name": "search_blog",
+      "description": "Find Thrifle articles by keyword: original data studies (e.g. what actually dropped on Black Friday, Prime Day fact-checks), buying guides, and the Money section's credit and BNPL explainers. Returns title, one-line summary, date, author and URL. Use get_blog_post to read one.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 120
+          },
+          "section": {
+            "type": "string",
+            "enum": [
+              "all",
+              "shopping",
+              "money"
+            ],
+            "description": "Default all"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 20,
+            "description": "Max results (default 8, max 20)"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      }
+    },
+    {
+      "name": "get_blog_post",
+      "description": "The full text of one Thrifle article by URL or slug (HTML stripped, long posts truncated at ~20,000 characters), plus its FAQ, author, date and URL for citation.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "post": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 300,
+            "description": "thrifle.com article URL or its slug"
+          }
+        },
+        "required": [
+          "post"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      }
+    },
+    {
+      "name": "search_credit_cards",
+      "description": "Browse Thrifle's US credit-card database (store and co-branded cards first): filter by issuer, retailer, store cards only, or cards that use deferred-interest promotional financing. Rows carry purchase APR range, annual fee, financing type, data confidence and the verification date. Numbers come from issuer pricing pages, never roundups.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "maxLength": 80,
+            "description": "Name fragment matched against card name, issuer or partner retailer"
+          },
+          "issuer": {
+            "type": "string",
+            "maxLength": 80,
+            "description": "Exact issuer name, e.g. 'Synchrony Bank', 'Citi Retail Services'"
+          },
+          "merchant": {
+            "type": "string",
+            "maxLength": 80,
+            "description": "Partner retailer, e.g. 'Amazon', 'Lowe's'"
+          },
+          "store_cards_only": {
+            "type": "boolean"
+          },
+          "deferred_interest_only": {
+            "type": "boolean",
+            "description": "Only cards whose promo financing is deferred interest (retroactive interest if not paid in full)"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 60,
+            "description": "Max results (default 20, max 60)"
+          }
+        },
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      }
+    },
+    {
+      "name": "get_credit_card",
+      "description": "Full record for one card by its card_key (from search_credit_cards): APR tiers, intro and penalty APRs, fees, promotional financing terms with the issuer's own fine-print quote, rewards, perks, welcome offer, and provenance (pricing-terms URL, verification date, confidence). Store cards link to the partner retailer's return policy.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "card_key": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 120,
+            "description": "card_key from search_credit_cards, e.g. 'amazon-store-card'"
+          }
+        },
+        "required": [
+          "card_key"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      }
+    },
+    {
+      "name": "get_store_credit_cards",
+      "description": "The store and co-branded credit cards a US retailer offers, with APR, annual fee, whether promotional financing is deferred interest, and links to each card's full terms, the retailer's store-card page and its return policy. Call for 'is the X store card worth it' or 'does X card have deferred interest' questions.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "merchant": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80,
+            "description": "Retailer name or thrifle.com slug — e.g. 'Lowe's', 'Amazon', 'Best Buy', e.g. \"Costco\", \"best-buy\", \"Nordstrom\""
+          }
+        },
+        "required": [
+          "merchant"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      }
+    },
+    {
+      "name": "get_money_monitor",
+      "description": "Current US macro numbers from Thrifle's Money Monitor: GDP growth, personal saving rate, average credit-card APR, revolving and total consumer credit, the federal debt, and mortgage / fed funds / 10-year Treasury rates, each with the previous reading and year-ago value. Sourced from FRED and the U.S. Treasury; refreshed daily.",
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "get_price_pulse",
+      "description": "Latest US Consumer Price Index by spending category (headline, food, energy, shelter, apparel, etc.) with month-over-month and year-over-year change, plus average gas prices by grade with week-ago and year-ago comparisons. Sourced from BLS and EIA.",
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "check_product_recalls",
+      "description": "Matches a product name (and optional brand) against recent U.S. CPSC recalls using a strict matcher tuned for zero false positives. Returns matching recalls with hazard and remedy, or an empty list. Useful before recommending a product.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "product": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 200,
+            "description": "Product title as sold, e.g. 'Peloton Tread+ treadmill'"
+          },
+          "brand": {
+            "type": "string",
+            "maxLength": 80
+          }
+        },
+        "required": [
+          "product"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      }
+    },
+    {
+      "name": "about_thrifle",
+      "description": "What Thrifle is, what each database covers and how big it is, how to cite it, and which tool answers which kind of question.",
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {}
+      }
+    }
+  ]
+}
