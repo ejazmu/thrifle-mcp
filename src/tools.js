@@ -65,6 +65,26 @@ function notFound(what, hint, link) {
 
 const esc = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const keyish = (s) => String(s || "").trim().toLowerCase().replace(/\s+/g, "-");
+// Discount, birthday and cancellation keys drop apostrophes and dots, turn
+// "+" into "plus" and "&" into nothing or "and" (lowes, pf_changs, disney_plus,
+// hm, a_and_w). The API already tries -/_/space variants, so a lookup walks
+// these candidates in order until one is found. Measured 2026-09-11 against the
+// 349 names in those databases: plain keyish found 269, this order finds 316.
+const fold = (s) => String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+function keyCandidates(s) {
+  const base = fold(s).replace(/['’]/g, "").replace(/\+/g, " plus ");
+  const dropped = base.replace(/\./g, "").replace(/&/g, " ").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  const spelled = base.replace(/\./g, " ").replace(/&/g, " and ").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  return [...new Set([dropped, spelled, keyish(s)].filter(Boolean))];
+}
+async function getByKey(api, base, merchant) {
+  let r = null;
+  for (const k of keyCandidates(merchant)) {
+    r = await api.get(`${base}/${encodeURIComponent(k)}`);
+    if (r.status !== 404) return r;
+  }
+  return r;
+}
 function slugFromInput(s) {
   const raw = String(s || "").trim();
   try {
@@ -217,7 +237,7 @@ const TOOLS = [
       "Verified military (active duty, veterans, reserve) and student discount programmes for a US retailer: value, eligibility, verification method (e.g. ID.me, SheerID), online vs in-store, stackability, exclusions, whether it is running right now, and the source URL. Call for 'does X have a military/student discount' questions.",
     input: { merchant: merchantArg() },
     handler: async ({ merchant }, { api }) => {
-      const r = await api.get(`/discounts/${encodeURIComponent(keyish(merchant))}`);
+      const r = await getByKey(api, "/discounts", merchant);
       if (r.status === 404) return notFound(`"${merchant}"`, "Try search_discounts with a name fragment, or type=military / type=student to browse.", S.url.discountsHub());
       if (!r.ok || !r.body) return fail(`Discount lookup failed (${r.status || "timeout"})`);
       return S.shapeDiscount(r.body);
@@ -254,7 +274,7 @@ const TOOLS = [
       "Step-by-step guide to cancelling a US subscription or membership: available channels (online, app, phone, in person), notice period, fees, refund after cancelling, retention tactics to expect, and an ease-of-cancellation grade. Coverage is still small; the response lists what is available when the merchant is not found.",
     input: { merchant: merchantArg("the service, e.g. 'Planet Fitness'") },
     handler: async ({ merchant }, { api }) => {
-      const r = await api.get(`/cancellation/${encodeURIComponent(keyish(merchant))}`);
+      const r = await getByKey(api, "/cancellation", merchant);
       if (r.status === 404) {
         const list = await api.get("/cancellation", {}, { ttlMs: 10 * 60 * 1000 });
         const available = Array.isArray(list.body) ? list.body.map((g) => ({ merchant: g.merchant_name, url: S.url.cancel(g.merchant_key) })) : [];
@@ -273,7 +293,7 @@ const TOOLS = [
       "What a US restaurant or retailer gives away for your birthday, whether it is actually free or needs a purchase or prior spend, how to sign up and how far ahead, the validity window, ID requirements, and known gotchas. Call for 'what does X give you on your birthday' questions.",
     input: { merchant: merchantArg("brand, e.g. 'Starbucks', 'Sephora'") },
     handler: async ({ merchant }, { api }) => {
-      const r = await api.get(`/birthday-freebies/${encodeURIComponent(keyish(merchant))}`);
+      const r = await getByKey(api, "/birthday-freebies", merchant);
       if (r.status === 404) return notFound(`"${merchant}"`, "Try search_birthday_freebies with a name fragment.", S.url.birthdayHub());
       if (!r.ok || !r.body) return fail(`Birthday-freebie lookup failed (${r.status || "timeout"})`);
       return S.shapeBirthday(r.body);
@@ -599,9 +619,30 @@ function summarizeArgs(args) {
   }
 }
 
+// A miss = the tool worked but had nothing for what was asked: a `found:false`
+// lookup or an empty list. Errors are not misses (they already log ok:false),
+// and neither are answers where "nothing" is the answer (no recall, no deal of
+// the day set) or a verdict held back for the site.
+const NEVER_A_MISS = new Set(["get_deal_of_the_day", "check_product_recalls", "about_thrifle", "get_money_monitor", "get_price_pulse"]);
+function missInfo(tool, out, args) {
+  if (!out || out.content || NEVER_A_MISS.has(tool)) return null;
+  let reason = null;
+  if (out.found === false) reason = /available on the site/i.test(String(out.message || "")) ? null : "not_found";
+  else if (["results", "matchers", "recent_deals"].some((k) => Array.isArray(out[k]) && out[k].length === 0)) reason = "empty";
+  if (!reason) return null;
+  const a = args || {};
+  const subject =
+    a.merchant || a.query || a.asin_or_url || a.card_key || a.deal || a.post ||
+    [a.merchant_a, a.merchant_b].filter(Boolean).join(" vs ") ||
+    Object.entries(a).map(([k, v]) => `${k}:${v}`).join(" ") || "(no arguments)";
+  return { reason, subject: String(subject) };
+}
+
 /**
- * Register every tool on an McpServer. `ctx` = { api, req } — a fresh loopback
- * client per request (so the port is right) and the inbound request for logs.
+ * Register every tool on an McpServer. `ctx` = { api, req, recordMiss? } — a
+ * fresh loopback client per request (so the port is right), the inbound request
+ * for logs, and an optional sink for misses (the backend passes one that writes
+ * to Mongo; the standalone public server passes none and only logs them).
  */
 function registerTools(server, ctx) {
   for (const t of TOOLS) {
@@ -616,8 +657,9 @@ function registerTools(server, ctx) {
       async (args) => {
         const t0 = Date.now();
         let ok = true;
+        let out;
         try {
-          const out = await t.handler(args || {}, ctx);
+          out = await t.handler(args || {}, ctx);
           if (out && out.isError) ok = false;
           return out && out.content ? out : text(out);
         } catch (e) {
@@ -626,22 +668,30 @@ function registerTools(server, ctx) {
           return fail(`Thrifle tool error: ${e && e.message ? e.message : "unknown"}`);
         } finally {
           const req = ctx.req;
+          const ua = req ? String(req.headers["user-agent"] || "").slice(0, 80) : null;
+          const miss = ok ? missInfo(t.name, out, args) : null;
           console.log(
             JSON.stringify({
               tag: "mcp",
               tool: t.name,
               ok,
+              ...(miss ? { miss: miss.reason } : {}),
               ms: Date.now() - t0,
               ip: req ? clientIp(req) : null,
               keyed: !!(req && presentedKey(req) && process.env.MCP_API_KEYS),
-              ua: req ? String(req.headers["user-agent"] || "").slice(0, 80) : null,
+              ua,
               args: summarizeArgs(args),
             })
           );
+          if (miss && typeof ctx.recordMiss === "function") {
+            Promise.resolve()
+              .then(() => ctx.recordMiss({ tool: t.name, subject: miss.subject, reason: miss.reason, args: summarizeArgs(args), ua }))
+              .catch(() => {});
+          }
         }
       }
     );
   }
 }
 
-module.exports = { TOOLS, SERVER_INFO, INSTRUCTIONS, ENDPOINT, registerTools, _internal: { text, fail, notFound, esc, keyish, slugFromInput, compact } };
+module.exports = { TOOLS, SERVER_INFO, INSTRUCTIONS, ENDPOINT, registerTools, _internal: { text, fail, notFound, esc, keyish, keyCandidates, missInfo, slugFromInput, compact } };

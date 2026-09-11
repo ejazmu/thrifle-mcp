@@ -34,7 +34,7 @@ const { Client } = require("@modelcontextprotocol/sdk/client/index.js");
 const { StreamableHTTPClientTransport } = require("@modelcontextprotocol/sdk/client/streamableHttp.js");
 const S = require("../src/shape");
 const { checkRateLimit, _reset } = require("../src/rate-limit");
-const { TOOLS } = require("../src/tools");
+const { TOOLS, _internal } = require("../src/tools");
 const mcpRouter = require("../src/router");
 
 let n = 0;
@@ -119,7 +119,7 @@ app.get("/api/credit-cards", (req, res) => res.json({ count: 1, cards: [FIX.card
 app.get("/api/credit-cards/:key", (req, res) => (req.params.key === FIX.card.card_key ? res.json({ card: FIX.card }) : res.status(404).json({ msg: "Card not found" })));
 app.get("/api/blog/posts/get-all", (req, res) => res.json({ page: 1, pages: 1, posts: req.query.vertical === "finance" ? [] : [FIX.post] }));
 app.get("/api/blog/posts/by-slug/:slug", (req, res) => (req.params.slug === FIX.post.slug ? res.json(FIX.post) : res.status(404).json({ msg: "Post not found" })));
-app.get("/api/discounts/:key", (req, res) => (req.params.key === "home-depot" ? res.json({ merchant_key: "home_depot", merchant_name: "Home Depot", category: "Home improvement", military: { has_discount: true, discount_value: "10%", status: { state: "standing", claimable: true } }, student: { has_discount: false } }) : res.status(404).json({ msg: "Not found" })));
+app.get("/api/discounts/:key", (req, res) => (req.params.key === "lowes" ? res.json({ merchant_key: "lowes", merchant_name: "Lowe's", category: "Home improvement", military: { has_discount: true, discount_value: "10%", status: { state: "standing", claimable: true } }, student: { has_discount: false } }) : req.params.key === "home-depot" ? res.json({ merchant_key: "home_depot", merchant_name: "Home Depot", category: "Home improvement", military: { has_discount: true, discount_value: "10%", status: { state: "standing", claimable: true } }, student: { has_discount: false } }) : res.status(404).json({ msg: "Not found" })));
 app.get("/api/cancellation", (req, res) => res.json([{ merchant_key: "planet-fitness", merchant_name: "Planet Fitness" }]));
 app.get("/api/cancellation/:key", (req, res) => res.status(404).json({ msg: "no" }));
 app.get("/api/about", (req, res) => res.json({ description: "d", capabilities: { return_policy_db: {} }, contact: "hello@thrifle.com" }));
@@ -273,6 +273,29 @@ function parse(result) {
     const c = await call("get_cancellation_guide", { merchant: "Netflix" });
     assert.strictEqual(c.found, false);
     assert.strictEqual(c.available[0].url, "https://thrifle.com/how-to-cancel/planet-fitness" + T);
+  });
+
+  await t("merchant keys: apostrophes, dots, + and accents resolve (Lowe's, P.F. Chang's, Disney+)", async () => {
+    const k = _internal.keyCandidates;
+    assert.strictEqual(k("Lowe's")[0], "lowes");
+    assert.strictEqual(k("P.F. Chang's")[0], "pf-changs");
+    assert.strictEqual(k("Disney+")[0], "disney-plus");
+    assert.strictEqual(k("Estée Lauder")[0], "estee-lauder");
+    assert.ok(k("A&W Restaurants").includes("a-and-w-restaurants"));
+    assert.strictEqual(k("Home Depot")[0], "home-depot");
+    const d = await call("get_merchant_discounts", { merchant: "Lowe's" });
+    assert.strictEqual(d.military.discount_value, "10%");
+  });
+
+  await t("misses are detected (found:false, empty lists) and hits are not", async () => {
+    const mi = _internal.missInfo;
+    assert.deepStrictEqual(mi("get_cancellation_guide", { found: false }, { merchant: "Netflix" }), { reason: "not_found", subject: "Netflix" });
+    assert.strictEqual(mi("search_deals", { query: "x", count: 0, results: [] }, { query: "Vitamix A3500" }).reason, "empty");
+    assert.strictEqual(mi("who_will_price_match", { matchers: [] }, { merchant: "Temu" }).subject, "Temu");
+    assert.strictEqual(mi("predict_amazon_price", { found: false, message: "The verdict for this product is available on the site." }, {}), null);
+    assert.strictEqual(mi("get_deal_of_the_day", { found: false }, {}), null);
+    assert.strictEqual(mi("check_product_recalls", { match_count: 0, results: [] }, { product: "crib" }), null);
+    assert.strictEqual(mi("get_return_policy", { found: true, merchant: "Costco" }, { merchant: "Costco" }), null);
   });
 
   await t("about_thrifle lists the catalogue", async () => {
