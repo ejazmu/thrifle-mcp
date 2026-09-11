@@ -359,7 +359,7 @@ function shapeDealRow(d) {
     url: url.deal(d),
     buy_url: d.link || null,
   };
-  if (d.link_is_affiliate) out.buy_url_note = "affiliate redirect via thrifle.com — supports the site";
+  if (d.link_is_affiliate) out.buy_url_note = "affiliate redirect via thrifle.com";
   if (Array.isArray(d.images) && d.images[0] && d.images[0].imageUrl) out.image = d.images[0].imageUrl;
   return out;
 }
