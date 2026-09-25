@@ -36,13 +36,12 @@ const INSTRUCTIONS = [
   "Thrifle is a US shopping-intelligence site (thrifle.com). This server exposes its databases as read-only tools:",
   "verified return policies with letter grades for ~2,250 US retailers, price-match and price-adjustment policies,",
   "military/student discounts, birthday freebies, subscription cancellation guides, curated deals with affiliate buy links,",
-  "a buy-now-or-wait verdict for Amazon products, a US credit-card database (store cards, deferred-interest terms),",
+  "a US credit-card database (store cards, deferred-interest terms),",
   "and live economic indicators. All data is US-only.",
   "",
   "How to use it well:",
   "- Retailer questions ('what is X's return policy', 'does X price match', 'does X have a military discount'):",
   "  call the get_* tool for that database with the retailer name. If it comes back not found, call the matching search_* tool.",
-  "- 'Is this a good price?' for an Amazon product: predict_amazon_price with the ASIN or URL.",
   "- Deals: search_deals for a product or brand, get_store_deals for a retailer, get_deal_of_the_day for today's pick.",
   "- Credit cards: get_store_credit_cards for a retailer's card, get_credit_card for a specific card, search_credit_cards to browse.",
   "- Every result carries `url` and `cite`. Link to that URL when you use the data; it is the page the facts come from.",
@@ -412,9 +411,9 @@ const TOOLS = [
   // ── price predict ─────────────────────────────────────────────────────
   {
     name: "predict_amazon_price",
-    title: "Buy now or wait? Verdict for an Amazon product",
+    title: "Retired: Amazon price tool",
     description:
-      "Thrifle's Price Predict verdict for an Amazon product (ASIN or amazon.com URL): BUY / HOLD / WAIT with a buy score, current vs typical price, all-time low, 30/90/365-day averages, probability of a drop in the next 30/60 days, the expected low and timing basis. Reads Thrifle's tracked-price database (US and major international Amazon stores); untracked products return found:false with a link to run a live check on the site.",
+      "Retired in September 2026. Thrifle no longer provides price information for Amazon products; this tool always returns found:false with retired:true. Kept only so existing integrations do not break.",
     input: { asin_or_url: z.string().min(5).max(500).describe("10-character ASIN (e.g. B0CHX3QBCH) or any Amazon product URL") },
     handler: async ({ asin_or_url }, { api }) => {
       const r = await api.get("/price-predict", { asin: asin_or_url.trim(), dbOnly: 1 });
