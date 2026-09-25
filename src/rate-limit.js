@@ -5,7 +5,7 @@
  * The tools hand out the same structured facts the website renders, one
  * merchant at a time. That is fine for an assistant answering a shopper and
  * not fine for a script paging through 2,250 merchants to rebuild the
- * database (see llms-full.txt's 2026-08 trim and the canary programme). Two
+ * database (see the canary programme). Two
  * ceilings, both in-memory (single PM2 process, resets on restart — good
  * enough for a first line; nginx logs are the durable record):
  *
