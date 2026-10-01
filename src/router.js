@@ -29,7 +29,7 @@ const { McpServer } = require("@modelcontextprotocol/sdk/server/mcp.js");
 const { StreamableHTTPServerTransport } = require("@modelcontextprotocol/sdk/server/streamableHttp.js");
 const { registerTools, SERVER_INFO, INSTRUCTIONS, TOOLS, ENDPOINT } = require("./tools");
 const { makeApiClient } = require("./api-client");
-const { checkRateLimit } = require("./rate-limit");
+const { checkRateLimit, clientIp } = require("./rate-limit");
 
 const SITE = process.env.SITE_URL || "https://thrifle.com";
 
@@ -78,7 +78,7 @@ router.post("/", async (req, res) => {
   }
 
   const server = new McpServer(SERVER_INFO, { instructions: INSTRUCTIONS });
-  registerTools(server, { api: makeApiClient({ port: req.socket && req.socket.localPort }), req });
+  registerTools(server, { api: makeApiClient({ port: req.socket && req.socket.localPort, clientIp: clientIp(req) }), req });
   const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
 
   res.on("close", () => {
