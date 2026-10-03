@@ -203,7 +203,17 @@ function shapeReturnPolicy(body) {
     if (p.policy_url_is_affiliate) out.policy_url_note = "first-party redirect to the retailer's policy page";
   }
   if (body.what_they_sell) out.what_they_sell = short(body.what_they_sell, 200);
-  if (Array.isArray(body.faqs) && body.faqs.length) {
+  // Questions come from the page's guide when there is one: the older
+  // `faqs` rows are out of date and the web hides them under a guide
+  // (2026-10-03). Answers the retailer doesn't publish stay out of the
+  // sample, same as the page's FAQPage. Same field and shape: [{ q, a }].
+  const guideQs =
+    body.guide && Array.isArray(body.guide.sections)
+      ? body.guide.sections.filter((s) => s && s.heading && s.body && s.confidence !== "not_published")
+      : [];
+  if (guideQs.length) {
+    out.faq_sample = guideQs.slice(0, 3).map((s) => ({ q: s.heading, a: short(s.body, 400) }));
+  } else if (Array.isArray(body.faqs) && body.faqs.length) {
     out.faq_sample = body.faqs.slice(0, 3).map((f) => ({ q: f.question, a: short(f.answer, 400) }));
   }
   out.last_verified = p.last_verified || null;
